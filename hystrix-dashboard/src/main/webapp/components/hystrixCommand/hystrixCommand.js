@@ -89,9 +89,34 @@
 			validateData(data);
 			// escape string used in jQuery & d3 selectors
 			data.escapedName = data.name.replace(/([ !"#$%&'()*+,./:;<=>?@[\]^`{|}~])/g,'\\$1');
+
 			// do math
-			converAllAvg(data);
+			calcErrorPercent(data);
+			convertAllAvg(data);
 			calcRatePerSecond(data);
+		}
+
+		function calcErrorPercent(data) {
+			var total = data.rollingCountSuccess
+				+ data.rollingCountFailure
+				+ data.rollingCountTimeout
+				+ data.rollingCountThreadPoolRejected
+				+ data.rollingCountSemaphoreRejected
+				+ data.rollingCountShortCircuited;
+
+			var errors = total - data.rollingCountSuccess;
+
+			var errorPercentage = 0;
+			if (total > 0) {
+				errorPercentage = Math.round((errors / total) * 1000) / 10;
+			}
+			/*if (errorPercentage > 0) {
+				console.log("%s errror % = %f = %d / %d", data.name, errorPercentage, errors, total);
+			}*/
+
+			// overwrites error % sent by server because the server is simply summing
+			// error % values from all hosts reporting to turbine
+			data["errorPercentage"] = errorPercentage;
 		}
 
 		/**
@@ -101,8 +126,7 @@
 		 * 
 		 * We want to do this on any numerical values where we want per instance rather than cluster-wide sum.
 		 */
-		function converAllAvg(data) {
-			convertAvg(data, "errorPercentage", true);
+		function convertAllAvg(data) {
 			convertAvg(data, "latencyExecute_mean", false);
 			convertAvg(data, "latencyTotal_mean", false);
 			
@@ -135,7 +159,7 @@
 			}
 			data["ratePerSecond"] =  roundNumber(totalRequests / numberSeconds);
 			data["ratePerSecondPerHost"] =  roundNumber(totalRequests / numberSeconds / data["reportingHosts"]) ;
-	    }
+		}
 
 		function validateData(data) {
 			assertNotNull(data,"reportingHosts");
@@ -527,7 +551,7 @@
 	  x2 = x.length > 1 ? '.' + x[1] : '';
 	  var rgx = /(\d+)(\d{3})/;
 	  while (rgx.test(x1)) {
-	    x1 = x1.replace(rgx, '$1' + ',' + '$2');
+		x1 = x1.replace(rgx, '$1' + ',' + '$2');
 	  }
 	  return x1 + x2;
 	}
